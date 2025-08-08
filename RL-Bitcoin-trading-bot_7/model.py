@@ -99,7 +99,7 @@ class Shared_Model:
         return value_loss
 
     def critic_predict(self, state):
-        return self.Critic.predict([state, np.zeros((state.shape[0], 1))])
+        return self.Critic.predict(state)
 
         
 class Actor_Model:
@@ -164,4 +164,4 @@ class Critic_Model:
         return value_loss
 
     def critic_predict(self, state):
-        return self.Critic.predict([state, np.zeros((state.shape[0], 1))])
+        return self.Critic.predict(state)
