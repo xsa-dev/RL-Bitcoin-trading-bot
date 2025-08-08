@@ -1,6 +1,9 @@
 numpy
-tensorflow==2.3.1
-tensorflow-gpu==2.3.1
+# Use one TF package (GPU included since TF 2.10+). If staying on 2.3.1, keep only one of the lines below.
+# tensorflow==2.3.1
+# tensorflow-gpu==2.3.1
+# Recommended modern TF (adjust if environment pinned):
+tensorflow==2.10.1
 opencv-python
 matplotlib
 tensorboardx
@@ -9,3 +12,4 @@ mplfinance
 ta
 bitfinex-tencars
 seaborn
+pytest

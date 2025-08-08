@@ -19,11 +19,13 @@ from tensorboardX import SummaryWriter
 from tensorflow.keras.optimizers import Adam, RMSprop
 from model import Actor_Model, Critic_Model, Shared_Model
 from utils import TradingGraph, Write_to_file, Normalizing
+from utils import LogDiffMinMaxScaler, seed_everything
 import matplotlib.pyplot as plt
 from datetime import datetime
 from indicators import *
 from multiprocessing_env import train_multiprocessing, test_multiprocessing
 import json
+import argparse
 
 
 class CustomAgent:
@@ -34,7 +36,7 @@ class CustomAgent:
         self.comment = comment
         self.depth = depth
         
-        # Action space from 0 to 3, 0 is hold, 1 is buy, 2 is sell
+        # Action space from 0 to 2: 0 hold, 1 buy, 2 sell
         self.action_space = np.array([0, 1, 2])
 
         # folder to save models
@@ -172,7 +174,7 @@ class CustomAgent:
         
 class CustomEnv:
     # A custom Bitcoin trading environment
-    def __init__(self, df, df_normalized, initial_balance=1000, lookback_window_size=50, Render_range=100, Show_reward=False, Show_indicators=False, normalize_value=40000):
+    def __init__(self, df, df_normalized, initial_balance=1000, lookback_window_size=50, Render_range=100, Show_reward=False, Show_indicators=False, normalize_value=40000, step_reward='net_worth_delta', trade_fee=0.001):
         # Define action space and state size and other custom parameters
         self.df = df.reset_index()#.reset_index()#.dropna().copy().reset_index()
         self.df_normalized = df_normalized.reset_index()#.reset_index()#.copy().dropna().reset_index()
@@ -182,6 +184,7 @@ class CustomEnv:
         self.Render_range = Render_range # render range in visualization
         self.Show_reward = Show_reward # show order reward in rendered visualization
         self.Show_indicators = Show_indicators # show main indicators in rendered visualization
+        self.step_reward = step_reward
 
         # Orders history contains the balance, net_worth, crypto_bought, crypto_sold, crypto_held values for the last lookback_window_size steps
         self.orders_history = deque(maxlen=self.lookback_window_size)
@@ -191,7 +194,7 @@ class CustomEnv:
 
         self.normalize_value = normalize_value
 
-        self.fees = 0.001 # default Binance 0.1% order fees
+        self.fees = trade_fee # default Binance 0.1% order fees
 
         self.columns = list(self.df_normalized.columns[2:])
 
@@ -303,18 +306,14 @@ class CustomEnv:
 
     # Calculate reward
     def get_reward(self):
-        if self.episode_orders > 1 and self.episode_orders > self.prev_episode_orders:
-            self.prev_episode_orders = self.episode_orders
-            if self.trades[-1]['type'] == "buy" and self.trades[-2]['type'] == "sell":
-                reward = self.trades[-2]['total']*self.trades[-2]['current_price'] - self.trades[-2]['total']*self.trades[-1]['current_price']
+        # Step-wise reward: change in net worth; optional annotation for trades
+        reward = self.net_worth - self.prev_net_worth
+        if self.Show_reward and self.episode_orders > 0 and len(self.trades) > 0:
+            try:
                 self.trades[-1]["Reward"] = reward
-                return reward
-            elif self.trades[-1]['type'] == "sell" and self.trades[-2]['type'] == "buy":
-                reward = self.trades[-1]['total']*self.trades[-1]['current_price'] - self.trades[-2]['total']*self.trades[-2]['current_price']
-                self.trades[-1]["Reward"] = reward
-                return reward
-        else:
-            return 0
+            except Exception:
+                pass
+        return reward
 
     # render environment
     def render(self, visualize = False):
@@ -456,36 +455,53 @@ def test_agent(test_df, test_df_nomalized, visualize=True, test_episodes=10, fol
 
 
 if __name__ == "__main__":            
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', choices=['train','test'], default='test')
+    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--test_window_hours', type=int, default=720*3)
+    parser.add_argument('--visualize', action='store_true')
+    parser.add_argument('--workers', type=int, default=16)
+    parser.add_argument('--lookback', type=int, default=100)
+    parser.add_argument('--model', choices=['Dense','CNN','LSTM'], default='CNN')
+    parser.add_argument('--lr', type=float, default=1e-5)
+    parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--fee', type=float, default=0.001)
+    parser.add_argument('--step_reward', choices=['net_worth_delta'], default='net_worth_delta')
+    parser.add_argument('--folder', type=str, default="2021_02_21_17_54_Crypto_trader")
+    parser.add_argument('--name', type=str, default="3263.63_Crypto_trader")
+    args = parser.parse_args()
+
+    seed_everything(args.seed)
+
     df = pd.read_csv('./BTCUSD_1h.csv')
     df = df.dropna()
     df = df.sort_values('Date')
 
-    df = AddIndicators(df) # insert indicators to df 2021_02_21_17_54_Crypto_trader
-    #df = indicators_dataframe(df, threshold=0.5, plot=False) # insert indicators to df 2021_02_18_21_48_Crypto_trader
-    depth = len(list(df.columns[1:])) # OHCL + indicators without Date
+    df = AddIndicators(df)
+    depth = len(list(df.columns[1:]))
 
-    df_nomalized = Normalizing(df[99:])[1:].dropna()
+    # remove first 100 rows to avoid NaNs from indicators
     df = df[100:].dropna()
 
-    lookback_window_size = 100
-    test_window = 720*3 # 3 months
-    
-    # split training and testing datasets
-    train_df = df[:-test_window-lookback_window_size] # we leave 100 to have properly calculated indicators
+    lookback_window_size = args.lookback
+    test_window = args.test_window_hours
+
+    # split datasets
+    train_df = df[:-test_window-lookback_window_size]
     test_df = df[-test_window-lookback_window_size:]
-    
-    # split training and testing normalized datasets
-    train_df_nomalized = df_nomalized[:-test_window-lookback_window_size] # we leave 100 to have properly calculated indicators
-    test_df_nomalized = df_nomalized[-test_window-lookback_window_size:]
 
-    # single processing training
-    #agent = CustomAgent(lookback_window_size=lookback_window_size, lr=0.00001, epochs=5, optimizer=Adam, batch_size = 32, model="CNN")
-    #train_env = CustomEnv(df=train_df, df_normalized=train_df_nomalized, lookback_window_size=lookback_window_size)
-    #train_agent(train_env, agent, visualize=False, train_episodes=50000, training_batch_size=500)
+    # Fit scaler on train only; transform train/test
+    scaler = LogDiffMinMaxScaler().fit(train_df)
+    train_df_nomalized = scaler.transform(train_df)
+    test_df_nomalized = scaler.transform(test_df)
 
-    # multiprocessing training/testing. Note - run from cmd or terminal
-    #agent = CustomAgent(lookback_window_size=lookback_window_size, lr=0.00001, epochs=5, optimizer=Adam, batch_size=32, model="CNN", depth=depth, comment="Normalized")
-    #train_multiprocessing(CustomEnv, agent, train_df, train_df_nomalized, num_worker = 32, training_batch_size=500, visualize=False, EPISODES=200000)
-
-    #test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num_worker = 16, visualize=False, test_episodes=1000, folder="2021_02_18_21_48_Crypto_trader", name="3906.52_Crypto_trader", comment="3 months")
-    test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num_worker = 16, visualize=True, test_episodes=1000, folder="2021_02_21_17_54_Crypto_trader", name="3263.63_Crypto_trader", comment="3 months")
+    if args.mode == 'train':
+        agent = CustomAgent(lookback_window_size=lookback_window_size, lr=args.lr, epochs=args.epochs, optimizer=Adam, batch_size=args.batch_size, model=args.model, depth=depth, comment="Normalized")
+        train_env = CustomEnv(df=train_df, df_normalized=train_df_nomalized, lookback_window_size=lookback_window_size, step_reward=args.step_reward, trade_fee=args.fee)
+        # Single-process example (multiprocessing available below)
+        train_agent(train_env, agent, visualize=args.visualize, train_episodes=1000, training_batch_size=500)
+        # Or multiprocessing
+        # train_multiprocessing(CustomEnv, agent, train_df, train_df_nomalized, num_worker=args.workers, training_batch_size=500, visualize=args.visualize, EPISODES=200000)
+    else:
+        test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num_worker = args.workers, visualize=args.visualize, test_episodes=1000, folder=args.folder, name=args.name, comment=f"{test_window}h")

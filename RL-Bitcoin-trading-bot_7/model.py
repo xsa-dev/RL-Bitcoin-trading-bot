@@ -12,7 +12,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Flatten, Conv1D, MaxPooling1D#, LSTM
-from tensorflow.compat.v1.keras.layers import CuDNNLSTM as LSTM # only for GPU
+try:
+    from tensorflow.compat.v1.keras.layers import CuDNNLSTM as LSTM  # TF <=2.3 GPU-optimized LSTM
+except Exception:
+    from tensorflow.keras.layers import LSTM  # Fallback for modern TF
 from tensorflow.keras import backend as K
 #tf.config.experimental_run_functions_eagerly(True) # used for debuging and development
 tf.compat.v1.disable_eager_execution() # usually using this for fastest performance
@@ -99,7 +102,7 @@ class Shared_Model:
         return value_loss
 
     def critic_predict(self, state):
-        return self.Critic.predict([state, np.zeros((state.shape[0], 1))])
+        return self.Critic.predict(state)
 
         
 class Actor_Model:
@@ -164,4 +167,4 @@ class Critic_Model:
         return value_loss
 
     def critic_predict(self, state):
-        return self.Critic.predict([state, np.zeros((state.shape[0], 1))])
+        return self.Critic.predict(state)
