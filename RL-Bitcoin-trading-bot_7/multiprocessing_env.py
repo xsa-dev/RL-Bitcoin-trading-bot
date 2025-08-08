@@ -152,6 +152,8 @@ def test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num
     average_orders = 0
     no_profit_episodes = 0
     episode = 0
+    # track best single-episode result
+    best_result = {"net_worth": -np.inf, "episode": None, "worker": None, "orders": None}
 
     for idx in range(num_worker):
         parent_conn, child_conn = Pipe()
@@ -185,15 +187,28 @@ def test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num
                 average_orders += episode_orders
                 if net_worth < initial_balance: no_profit_episodes += 1 # calculate episode count where we had negative profit through episode
                 print("episode: {:<5} worker: {:<2} net worth: {:<7.2f} average_net_worth: {:<7.2f} orders: {}".format(episode, worker_id, net_worth, average_net_worth/episode, episode_orders))
+                # highlight best result
+                if net_worth > best_result["net_worth"]:
+                    best_result = {"net_worth": net_worth, "episode": episode, "worker": worker_id, "orders": episode_orders}
+                    try:
+                        print("\033[92mBEST so far -> episode: {:<5} worker: {:<2} net worth: {:<7.2f} orders: {}\033[0m".format(episode, worker_id, net_worth, episode_orders))
+                    except Exception:
+                        print("BEST so far -> episode: {:<5} worker: {:<2} net worth: {:<7.2f} orders: {}".format(episode, worker_id, net_worth, episode_orders))
                 if episode == test_episodes: break
             
     print("No profit episodes: {}".format(no_profit_episodes))
+    # print best result summary
+    if best_result["episode"] is not None:
+        print("BEST result: episode: {:<5} worker: {:<2} net worth: {:<7.2f} orders: {}".format(best_result["episode"], best_result["worker"], best_result["net_worth"], best_result["orders"]))
     # save test results to test_results.txt file
     with open("test_results.txt", "a+") as results:
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M')
         results.write(f'{current_date}, {name}, test episodes:{test_episodes}')
         results.write(f', net worth:{average_net_worth/(episode+1)}, orders per episode:{average_orders/test_episodes}')
-        results.write(f', no profit episodes:{no_profit_episodes}, model: {agent.model}, comment: {comment}\n')
+        results.write(f', no profit episodes:{no_profit_episodes}, model: {agent.model}, comment: {comment}')
+        if best_result["episode"] is not None:
+            results.write(f", best_net_worth:{best_result['net_worth']}, best_episode:{best_result['episode']}, best_worker:{best_result['worker']}, best_orders:{best_result['orders']}")
+        results.write("\n")
     
     # terminating processes after while loop
     works.append(work)
