@@ -17,6 +17,7 @@ from datetime import datetime
 import os
 import cv2
 import numpy as np
+import random
 
 def Write_to_file(Date, net_worth, filename='{}.txt'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))):
     for i in net_worth: 
@@ -27,6 +28,75 @@ def Write_to_file(Date, net_worth, filename='{}.txt'.format(datetime.now().strft
     file = open("logs/"+filename, 'a+')
     file.write(Date+"\n")
     file.close()
+
+class LogDiffMinMaxScaler:
+    """Fit/transform scaler that applies per-column log-returns (or first difference)
+    followed by Min-Max scaling, with parameters computed on training data only.
+    Columns assumed: Date, Open, High, Low, Close, Volume, ... indicators.
+    """
+    def __init__(self):
+        self.column_to_method = {}
+        self.column_to_min = {}
+        self.column_to_max = {}
+        self.fitted = False
+
+    def _transform_series(self, series: pd.Series, method: str) -> pd.Series:
+        if method == 'log':
+            transformed = np.log(series) - np.log(series.shift(1))
+        else:
+            transformed = series - series.shift(1)
+        return transformed
+
+    def fit(self, df: pd.DataFrame):
+        if 'Date' in df.columns:
+            columns = df.columns.tolist()[1:]
+        else:
+            columns = df.columns.tolist()
+        for column in columns:
+            # Try log returns first; if invalid (non-positive), fallback to diff
+            series = df[column]
+            can_use_log = (series.dropna() > 0).all()
+            method = 'log' if can_use_log else 'diff'
+            transformed = self._transform_series(series, method)
+            # Compute min/max ignoring NaNs introduced by shift
+            col_min = transformed[1:].min()
+            col_max = transformed[1:].max()
+            # Avoid zero division
+            if col_min == col_max:
+                col_min = col_min - 1e-8
+                col_max = col_max + 1e-8
+            self.column_to_method[column] = method
+            self.column_to_min[column] = float(col_min)
+            self.column_to_max[column] = float(col_max)
+        self.fitted = True
+        return self
+
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+        assert self.fitted, "Scaler must be fitted before transform()"
+        result = df.copy()
+        if 'Date' in result.columns:
+            columns = result.columns.tolist()[1:]
+        else:
+            columns = result.columns.tolist()
+        for column in columns:
+            method = self.column_to_method[column]
+            col_min = self.column_to_min[column]
+            col_max = self.column_to_max[column]
+            transformed = self._transform_series(result[column], method)
+            result[column] = (transformed - col_min) / (col_max - col_min)
+        return result
+
+
+def seed_everything(seed: int):
+    """Set seeds for python, numpy, and tensorflow if available."""
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    try:
+        import tensorflow as tf
+        tf.random.set_seed(seed)
+    except Exception:
+        pass
 
 def display_frames_as_gif(frames, episode):
     import pylab

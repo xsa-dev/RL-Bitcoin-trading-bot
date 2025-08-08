@@ -14,18 +14,33 @@ import numpy as np
 from datetime import datetime
 import json
 from tensorflow.keras.optimizers import Adam
+import os
+import random
+
+def _seed_worker(base_seed: int, worker_idx: int):
+    seed = (base_seed + worker_idx * 9973) % (2**32 - 1)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    try:
+        import tensorflow as tf
+        tf.random.set_seed(seed)
+    except Exception:
+        pass
 
 class Environment(Process):
-    def __init__(self, env_idx, child_conn, env, training_batch_size, visualize):
+    def __init__(self, env_idx, child_conn, env, training_batch_size, visualize, base_seed: int = 42):
         super(Environment, self).__init__()
         self.env = env
         self.env_idx = env_idx
         self.child_conn = child_conn
         self.training_batch_size = training_batch_size
         self.visualize = visualize
+        self.base_seed = base_seed
 
     def run(self):
         super(Environment, self).run()
+        _seed_worker(self.base_seed, self.env_idx)
         state = self.env.reset(env_steps_size = self.training_batch_size)
         self.child_conn.send(state)
         while True:
@@ -43,7 +58,7 @@ class Environment(Process):
 
             self.child_conn.send([state, reward, done, reset, net_worth, episode_orders])
 
-def train_multiprocessing(CustomEnv, agent, train_df, train_df_nomalized, num_worker=4, training_batch_size=500, visualize=False, EPISODES=10000):
+def train_multiprocessing(CustomEnv, agent, train_df, train_df_nomalized, num_worker=4, training_batch_size=500, visualize=False, EPISODES=10000, base_seed: int = 42):
     works, parent_conns, child_conns = [], [], []
     episode = 0
     total_average = deque(maxlen=100) # save recent 100 episodes net worth
@@ -52,7 +67,7 @@ def train_multiprocessing(CustomEnv, agent, train_df, train_df_nomalized, num_wo
     for idx in range(num_worker):
         parent_conn, child_conn = Pipe()
         env = CustomEnv(train_df, train_df_nomalized, lookback_window_size=agent.lookback_window_size)
-        work = Environment(idx, child_conn, env, training_batch_size, visualize)
+        work = Environment(idx, child_conn, env, training_batch_size, visualize, base_seed)
         work.start()
         works.append(work)
         parent_conns.append(parent_conn)
@@ -121,7 +136,7 @@ def train_multiprocessing(CustomEnv, agent, train_df, train_df_nomalized, num_wo
         print('TERMINATED:', work)
         work.join()
 
-def test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num_worker = 4, visualize=False, test_episodes=1000, folder="", name="", comment="", initial_balance=1000, Show_reward=False, Show_indicators=False):
+def test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num_worker = 4, visualize=False, test_episodes=1000, folder="", name="", comment="", initial_balance=1000, Show_reward=False, Show_indicators=False, base_seed: int = 42):
     with open(folder+"/Parameters.json", "r") as json_file:
         params = json.load(json_file)
     if name != "":
@@ -142,7 +157,7 @@ def test_multiprocessing(CustomEnv, CustomAgent, test_df, test_df_nomalized, num
         parent_conn, child_conn = Pipe()
         #env = CustomEnv(test_df, initial_balance=initial_balance, lookback_window_size=agent.lookback_window_size)
         env = CustomEnv(df=test_df, df_normalized=test_df_nomalized, initial_balance=initial_balance, lookback_window_size=agent.lookback_window_size)
-        work = Environment(idx, child_conn, env, training_batch_size=0, visualize=visualize)
+        work = Environment(idx, child_conn, env, training_batch_size=0, visualize=visualize, base_seed=base_seed)
         work.start()
         works.append(work)
         parent_conns.append(parent_conn)
