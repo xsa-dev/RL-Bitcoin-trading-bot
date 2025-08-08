@@ -392,6 +392,8 @@ def _test_agent(env, agent, visualize=True, test_episodes=10, folder="", name="C
     average_net_worth = 0
     average_orders = 0
     no_profit_episodes = 0
+    # track best single-episode result
+    best_result = {"net_worth": -np.inf, "episode": None, "orders": None}
     for episode in range(test_episodes):
         state = env.reset()
         while True:
@@ -403,16 +405,27 @@ def _test_agent(env, agent, visualize=True, test_episodes=10, folder="", name="C
                 average_orders += env.episode_orders
                 if env.net_worth < env.initial_balance: no_profit_episodes += 1 # calculate episode count where we had negative profit through episode
                 print("episode: {:<5}, net_worth: {:<7.2f}, average_net_worth: {:<7.2f}, orders: {}".format(episode, env.net_worth, average_net_worth/(episode+1), env.episode_orders))
+                if env.net_worth > best_result["net_worth"]:
+                    best_result = {"net_worth": env.net_worth, "episode": episode, "orders": env.episode_orders}
+                    try:
+                        print("\033[92mBEST so far -> episode: {:<5} net worth: {:<7.2f} orders: {}\033[0m".format(episode, env.net_worth, env.episode_orders))
+                    except Exception:
+                        print("BEST so far -> episode: {:<5} net worth: {:<7.2f} orders: {}".format(episode, env.net_worth, env.episode_orders))
                 break
             
     print("average {} episodes agent net_worth: {}, orders: {}".format(test_episodes, average_net_worth/test_episodes, average_orders/test_episodes))
     print("No profit episodes: {}".format(no_profit_episodes))
+    if best_result["episode"] is not None:
+        print("BEST result: episode: {:<5} net worth: {:<7.2f} orders: {}".format(best_result["episode"], best_result["net_worth"], best_result["orders"]))
     # save test results to test_results.txt file
     with open("test_results.txt", "a+") as results:
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M')
         results.write(f'{current_date}, {name}, test episodes:{test_episodes}')
         results.write(f', net worth:{average_net_worth/(episode+1)}, orders per episode:{average_orders/test_episodes}')
-        results.write(f', no profit episodes:{no_profit_episodes}, model: {agent.model}, comment: {comment}\n')
+        results.write(f', no profit episodes:{no_profit_episodes}, model: {agent.model}, comment: {comment}')
+        if best_result["episode"] is not None:
+            results.write(f", best_net_worth:{best_result['net_worth']}, best_episode:{best_result['episode']}, best_orders:{best_result['orders']}")
+        results.write("\n")
 
     
 def test_agent(test_df, test_df_nomalized, visualize=True, test_episodes=10, folder="", name="", comment="", Show_reward=False, Show_indicators=False):
@@ -431,6 +444,8 @@ def test_agent(test_df, test_df_nomalized, visualize=True, test_episodes=10, fol
     average_net_worth = 0
     average_orders = 0
     no_profit_episodes = 0
+    # track best single-episode result
+    best_result = {"net_worth": -np.inf, "episode": None, "orders": None}
     for episode in range(test_episodes):
         state = env.reset()
         while True:
@@ -442,6 +457,12 @@ def test_agent(test_df, test_df_nomalized, visualize=True, test_episodes=10, fol
                 average_orders += env.episode_orders
                 if env.net_worth < env.initial_balance: no_profit_episodes += 1 # calculate episode count where we had negative profit through episode
                 print("episode: {:<5}, net_worth: {:<7.2f}, average_net_worth: {:<7.2f}, orders: {}".format(episode, env.net_worth, average_net_worth/(episode+1), env.episode_orders))
+                if env.net_worth > best_result["net_worth"]:
+                    best_result = {"net_worth": env.net_worth, "episode": episode, "orders": env.episode_orders}
+                    try:
+                        print("\033[92mBEST so far -> episode: {:<5} net worth: {:<7.2f} orders: {}\033[0m".format(episode, env.net_worth, env.episode_orders))
+                    except Exception:
+                        print("BEST so far -> episode: {:<5} net worth: {:<7.2f} orders: {}".format(episode, env.net_worth, env.episode_orders))
                 break
             
     print("average {} episodes agent net_worth: {}, orders: {}".format(test_episodes, average_net_worth/test_episodes, average_orders/test_episodes))
@@ -451,7 +472,10 @@ def test_agent(test_df, test_df_nomalized, visualize=True, test_episodes=10, fol
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M')
         results.write(f'{current_date}, {name}, test episodes:{test_episodes}')
         results.write(f', net worth:{average_net_worth/(episode+1)}, orders per episode:{average_orders/test_episodes}')
-        results.write(f', no profit episodes:{no_profit_episodes}, model: {agent.model}, comment: {comment}\n')
+        results.write(f', no profit episodes:{no_profit_episodes}, model: {agent.model}, comment: {comment}')
+        if best_result["episode"] is not None:
+            results.write(f", best_net_worth:{best_result['net_worth']}, best_episode:{best_result['episode']}, best_orders:{best_result['orders']}")
+        results.write("\n")
 
 
 if __name__ == "__main__":            
