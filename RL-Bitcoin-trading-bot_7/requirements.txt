@@ -12,3 +12,4 @@ mplfinance
 ta
 bitfinex-tencars
 seaborn
+pytest
