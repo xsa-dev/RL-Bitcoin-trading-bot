@@ -2,8 +2,8 @@ import asyncio
 import json
 import os
 import sys
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional, List
 
 import pandas as pd
 
@@ -74,6 +74,18 @@ async def fetch_ohlcv_ccxt(exchange_id: str, symbol: str, timeframe: str, since_
     return df
 
 
+async def fetch_ohlcv_with_fallback(exchanges: List[str], symbol: str, timeframe: str, since_ms: Optional[int], limit: int):
+    last_error = None
+    for ex in exchanges:
+        try:
+            return ex, await fetch_ohlcv_ccxt(ex, symbol, timeframe, since_ms, limit)
+        except Exception as e:
+            last_error = str(e)
+            # try next exchange
+            continue
+    raise RuntimeError(f"All exchanges failed for {symbol} {timeframe}. Last error: {last_error}")
+
+
 def prepare_datasets(df: pd.DataFrame, lookback: int, test_window: int):
     df_with_ind = AddIndicators(df.copy())
     # drop first 100 rows to avoid NaNs from indicators
@@ -91,16 +103,39 @@ def prepare_datasets(df: pd.DataFrame, lookback: int, test_window: int):
     return depth, train_df, test_df, train_df_norm, test_df_norm
 
 
-async def handle_train(request: dict, websocket):
-    # Lazy import RL module and optimizer only when training starts
-    rb7 = load_rb7()
-    CustomAgent = rb7.CustomAgent
-    CustomEnv = rb7.CustomEnv
-    train_agent = rb7.train_agent
-    Adam = rb7.Adam
+async def handle_fetch(request: dict, websocket):
+    exchange_id = request.get('exchange') or 'bybit'
+    exchanges = request.get('exchanges') or [exchange_id, 'okx', 'kucoin', 'gate', 'bitget', 'bitfinex']
+    symbol = request.get('symbol', 'WIF/USDT')
+    timeframe = request.get('timeframe', '1h')
+    hours = int(request.get('hours', 720))
+    limit = int(request.get('limit', 1000))
 
+    since_dt = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since_ms = int(since_dt.timestamp() * 1000)
+
+    await websocket.send(json.dumps({"status": "fetching", "details": {"exchanges": exchanges, "symbol": symbol, "timeframe": timeframe, "since": since_ms}}))
+    try:
+        used_exchange, df = await fetch_ohlcv_with_fallback(exchanges, symbol, timeframe, since_ms, limit)
+    except Exception as e:
+        await websocket.send(json.dumps({"status": "error", "error": str(e)}))
+        return
+
+    # Return summary only to avoid heavy payload
+    summary = {
+        "exchange": used_exchange,
+        "rows": int(len(df)),
+        "start": df.iloc[0]["Date"],
+        "end": df.iloc[-1]["Date"],
+        "columns": df.columns.tolist(),
+    }
+    await websocket.send(json.dumps({"status": "fetched", "summary": summary}))
+
+
+async def handle_train(request: dict, websocket):
     # Defaults
-    exchange_id = request.get('exchange', 'binance')
+    exchange_id = request.get('exchange') or 'bybit'
+    exchanges = request.get('exchanges') or [exchange_id, 'okx', 'kucoin', 'gate', 'bitget', 'bitfinex']
     symbol = request.get('symbol', 'BTC/USDT')
     timeframe = request.get('timeframe', '1h')
     hours = int(request.get('hours', 720))  # history depth
@@ -118,18 +153,29 @@ async def handle_train(request: dict, websocket):
 
     seed_everything(seed)
 
-    since_dt = datetime.utcnow() - timedelta(hours=hours)
+    since_dt = datetime.now(timezone.utc) - timedelta(hours=hours)
     since_ms = int(since_dt.timestamp() * 1000)
 
-    await websocket.send(json.dumps({"status": "fetching", "details": {"exchange": exchange_id, "symbol": symbol, "timeframe": timeframe, "since": since_ms}}))
-    df = await fetch_ohlcv_ccxt(exchange_id, symbol, timeframe, since_ms, limit)
+    await websocket.send(json.dumps({"status": "fetching", "details": {"exchanges": exchanges, "symbol": symbol, "timeframe": timeframe, "since": since_ms}}))
+    try:
+        used_exchange, df = await fetch_ohlcv_with_fallback(exchanges, symbol, timeframe, since_ms, limit)
+    except Exception as e:
+        await websocket.send(json.dumps({"status": "error", "error": str(e)}))
+        return
 
     await websocket.send(json.dumps({"status": "preparing"}))
     depth, train_df, test_df, train_df_norm, test_df_norm = prepare_datasets(df, lookback=lookback, test_window=min(len(df)//4, 720))
 
-    await websocket.send(json.dumps({"status": "training", "episodes": episodes}))
+    await websocket.send(json.dumps({"status": "training", "episodes": episodes, "exchange": used_exchange}))
 
-    agent = CustomAgent(lookback_window_size=lookback, lr=lr, epochs=epochs, optimizer=Adam, batch_size=batch_size, model=model_kind, depth=depth, comment=f"ccxt:{exchange_id}:{symbol}:{timeframe}")
+    # Lazy import RL module and optimizer only when model is about to be built
+    rb7 = load_rb7()
+    CustomAgent = rb7.CustomAgent
+    CustomEnv = rb7.CustomEnv
+    train_agent = rb7.train_agent
+    Adam = rb7.Adam
+
+    agent = CustomAgent(lookback_window_size=lookback, lr=lr, epochs=epochs, optimizer=Adam, batch_size=batch_size, model=model_kind, depth=depth, comment=f"ccxt:{used_exchange}:{symbol}:{timeframe}")
 
     if finetune_folder and finetune_name:
         try:
@@ -152,7 +198,7 @@ async def handle_train(request: dict, websocket):
         await websocket.send(json.dumps({"status": "error", "error": str(e)}))
 
 
-async def serve(websocket, path):
+async def serve(websocket):
     try:
         async for message in websocket:
             try:
@@ -164,21 +210,22 @@ async def serve(websocket, path):
             action = req.get('action')
             if action == 'train':
                 await handle_train(req, websocket)
+            elif action == 'fetch':
+                await handle_fetch(req, websocket)
             else:
                 await websocket.send(json.dumps({"status": "error", "error": "Unknown action"}))
     except websockets.ConnectionClosed:
         return
 
 
-def main():
+async def run_server():
     host = os.environ.get('WS_HOST', '0.0.0.0')
     port = int(os.environ.get('WS_PORT', '8765'))
-    start_server = websockets.serve(serve, host, port, max_size=8 * 1024 * 1024)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_server)
-    print(f"WebSocket server listening on ws://{host}:{port}")
-    loop.run_forever()
+    async with websockets.serve(serve, host, port, max_size=8 * 1024 * 1024):
+        print(f"WebSocket server listening on ws://{host}:{port}")
+        # Run forever
+        await asyncio.Future()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(run_server())
