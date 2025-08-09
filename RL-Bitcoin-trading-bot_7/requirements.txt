@@ -13,3 +13,5 @@ ta
 bitfinex-tencars
 seaborn
 pytest
+ccxt
+websockets

@@ -1,0 +1,203 @@
+nohup: ignoring input
+WebSocket server listening on ws://0.0.0.0:8765
+/workspace/RL-Bitcoin-trading-bot_7/ws_server.py:101: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  since_dt = datetime.utcnow() - timedelta(hours=hours)
+connection handler failed
+Traceback (most recent call last):
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 585, in fetch
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 451 Client Error:  for url: https://api.binance.com/api/v3/exchangeInfo
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/websockets/asyncio/server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 191, in serve
+    await handle_fetch(req, websocket)
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 105, in handle_fetch
+    df = await fetch_ohlcv_ccxt(exchange_id, symbol, timeframe, since_ms, limit)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 51, in fetch_ohlcv_ccxt
+    batch = await asyncio.to_thread(exchange.fetch_ohlcv, symbol, timeframe, fetch_since, limit)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/binance.py", line 4504, in fetch_ohlcv
+    self.load_markets()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 1556, in load_markets
+    markets = self.fetch_markets(params)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/binance.py", line 3054, in fetch_markets
+    promisesRaw.append(self.publicGetExchangeInfo(params))
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/types.py", line 35, in unbound_method
+    return _self.request(self.path, self.api, self.method, params, config=self.config)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/binance.py", line 11395, in request
+    response = self.fetch2(path, api, method, params, headers, body, config)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4560, in fetch2
+    raise e
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4551, in fetch2
+    return self.fetch(request['url'], request['method'], request['headers'], request['body'])
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 603, in fetch
+    self.handle_http_status_code(http_status_code, http_status_text, url, method, http_response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 1736, in handle_http_status_code
+    raise ErrorClass(self.id + ' ' + method + ' ' + url + ' ' + codeAsString + ' ' + reason + ' ' + body)
+ccxt.base.errors.ExchangeNotAvailable: binance GET https://api.binance.com/api/v3/exchangeInfo 451  {
+  "code": 0,
+  "msg": "Service unavailable from a restricted location according to 'b. Eligibility' in https://www.binance.com/en/terms. Please contact customer service if you believe you received this message in error."
+}
+connection handler failed
+Traceback (most recent call last):
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 585, in fetch
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 403 Client Error: Forbidden for url: https://api.bybit.com/v5/market/instruments-info?category=spot
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/websockets/asyncio/server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 191, in serve
+    await handle_fetch(req, websocket)
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 105, in handle_fetch
+    df = await fetch_ohlcv_ccxt(exchange_id, symbol, timeframe, since_ms, limit)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 51, in fetch_ohlcv_ccxt
+    batch = await asyncio.to_thread(exchange.fetch_ohlcv, symbol, timeframe, fetch_since, limit)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/bybit.py", line 2516, in fetch_ohlcv
+    self.load_markets()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 1556, in load_markets
+    markets = self.fetch_markets(params)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/bybit.py", line 1717, in fetch_markets
+    promisesUnresolved.append(self.fetch_spot_markets(params))
+                              ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/bybit.py", line 1750, in fetch_spot_markets
+    response = self.publicGetV5MarketInstrumentsInfo(self.extend(request, params))
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/types.py", line 35, in unbound_method
+    return _self.request(self.path, self.api, self.method, params, config=self.config)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4566, in request
+    return self.fetch2(path, api, method, params, headers, body, config)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4560, in fetch2
+    raise e
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4551, in fetch2
+    return self.fetch(request['url'], request['method'], request['headers'], request['body'])
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 603, in fetch
+    self.handle_http_status_code(http_status_code, http_status_text, url, method, http_response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 1736, in handle_http_status_code
+    raise ErrorClass(self.id + ' ' + method + ' ' + url + ' ' + codeAsString + ' ' + reason + ' ' + body)
+ccxt.base.errors.RateLimitExceeded: bybit GET https://api.bybit.com/v5/market/instruments-info?category=spot 403 Forbidden <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD><META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<TITLE>ERROR: The request could not be satisfied</TITLE>
+</HEAD><BODY>
+<H1>403 ERROR</H1>
+<H2>The request could not be satisfied.</H2>
+<HR noshade size="1px">
+The Amazon CloudFront distribution is configured to block access from your country.
+We can't connect to the server for this app or website at this time. There might be too much traffic or a configuration error. Try again later, or contact the app or website owner.
+<BR clear="all">
+If you provide content to customers through CloudFront, you can find steps to troubleshoot and help prevent this error by reviewing the CloudFront documentation.
+<BR clear="all">
+<HR noshade size="1px">
+<PRE>
+Generated by cloudfront (CloudFront)
+Request ID: S7QxY05PRFF6X75VGcpE4olFBSWNNHFO5Y25L2tpB4kXdKC4Qyk4yw==
+</PRE>
+<ADDRESS>
+</ADDRESS>
+</BODY></HTML>
+connection handler failed
+Traceback (most recent call last):
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 585, in fetch
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 403 Client Error: Forbidden for url: https://api.bybit.com/v5/market/instruments-info?category=spot
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/websockets/asyncio/server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 191, in serve
+    train_agent(env, agent, visualize=False, train_episodes=episodes, training_batch_size=500)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 105, in handle_fetch
+  File "/workspace/RL-Bitcoin-trading-bot_7/ws_server.py", line 51, in fetch_ohlcv_ccxt
+    batch = await asyncio.to_thread(exchange.fetch_ohlcv, symbol, timeframe, fetch_since, limit)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/bybit.py", line 2516, in fetch_ohlcv
+    self.load_markets()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 1556, in load_markets
+    markets = self.fetch_markets(params)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/bybit.py", line 1717, in fetch_markets
+    promisesUnresolved.append(self.fetch_spot_markets(params))
+                              ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/bybit.py", line 1750, in fetch_spot_markets
+    response = self.publicGetV5MarketInstrumentsInfo(self.extend(request, params))
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/types.py", line 35, in unbound_method
+    return _self.request(self.path, self.api, self.method, params, config=self.config)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4566, in request
+    return self.fetch2(path, api, method, params, headers, body, config)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4560, in fetch2
+    raise e
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 4551, in fetch2
+    return self.fetch(request['url'], request['method'], request['headers'], request['body'])
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 603, in fetch
+    self.handle_http_status_code(http_status_code, http_status_text, url, method, http_response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/ccxt/base/exchange.py", line 1736, in handle_http_status_code
+    raise ErrorClass(self.id + ' ' + method + ' ' + url + ' ' + codeAsString + ' ' + reason + ' ' + body)
+ccxt.base.errors.RateLimitExceeded: bybit GET https://api.bybit.com/v5/market/instruments-info?category=spot 403 Forbidden <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<HTML><HEAD><META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<TITLE>ERROR: The request could not be satisfied</TITLE>
+</HEAD><BODY>
+<H1>403 ERROR</H1>
+<H2>The request could not be satisfied.</H2>
+<HR noshade size="1px">
+The Amazon CloudFront distribution is configured to block access from your country.
+We can't connect to the server for this app or website at this time. There might be too much traffic or a configuration error. Try again later, or contact the app or website owner.
+<BR clear="all">
+If you provide content to customers through CloudFront, you can find steps to troubleshoot and help prevent this error by reviewing the CloudFront documentation.
+<BR clear="all">
+<HR noshade size="1px">
+<PRE>
+Generated by cloudfront (CloudFront)
+Request ID: chOefvzWly6x-3A0X8YEhndgkWc2GZ8W_NkNboZdbpVxx9U85i7s9Q==
+</PRE>
+<ADDRESS>
+</ADDRESS>
+</BODY></HTML>
